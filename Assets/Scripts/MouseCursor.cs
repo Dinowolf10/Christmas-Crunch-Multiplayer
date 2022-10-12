@@ -24,15 +24,15 @@ public class MouseCursor : MonoBehaviour
 
     private void Awake()
     {
-        numMouseCursors = FindObjectsOfType<MouseCursor>().Length;
+        /*numMouseCursors = FindObjectsOfType<MouseCursor>().Length;
         if (numMouseCursors != 1)
         {
             Destroy(this.gameObject);
         }
         else
-        {
+        {*/
             DontDestroyOnLoad(this.gameObject);
-        }
+        //}
     }
 
     // Start is called before the first frame update

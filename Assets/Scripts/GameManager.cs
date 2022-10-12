@@ -44,14 +44,31 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
+        Debug.Log("Trying to spawn player");
         if (runner.IsServer)
         {
             // Create a unique position for the player
             Vector3 spawnPosition = new Vector3((player.RawEncoded % runner.Config.Simulation.DefaultPlayers) * 3, 1, 0);
             NetworkObject networkPlayerObject = runner.Spawn(_playerPrefab, spawnPosition, Quaternion.identity, player);
             // Keep track of the player avatars so we can remove it when they disconnect
+            
+            if (networkPlayerObject == null)
+            {
+                Debug.Log("Trying to spawn null player");
+            }
+            
             _spawnedCharacters.Add(player, networkPlayerObject);
+            Debug.Log("Spawned player");
+            Debug.Log(_spawnedCharacters[player].GetComponent<Transform>().position);
         }
+
+        /*if (_spawnedCharacters.Count == 1)
+        {
+            Vector3 spawnPosition = new Vector3((player.RawEncoded % runner.Config.Simulation.DefaultPlayers) * 3, 1, 0);
+            NetworkObject networkPlayerObject = runner.Spawn(_playerPrefab, spawnPosition, Quaternion.identity, player);
+            // Keep track of the player avatars so we can remove it when they disconnect
+            _spawnedCharacters.Add(player, networkPlayerObject);
+        }*/
     }
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
@@ -64,7 +81,14 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
         }
     }
 
-    public void OnInput(NetworkRunner runner, NetworkInput input) { }
+    public void OnInput(NetworkRunner runner, NetworkInput input) 
+    {
+        var data = new NetworkInputData();
+
+        data.mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
+        input.Set(data);
+    }
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
     public void OnConnectedToServer(NetworkRunner runner) { }
@@ -325,6 +349,15 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
         _runner = gameObject.AddComponent<NetworkRunner>();
         _runner.ProvideInput = true;
 
+        // Reset lives and round counter
+        //ResetGameState();
+
+        // Resets mouse state to normal
+        //mouseCursor.ResetMouseState();
+
+        //StopAudio();
+        //PlayMainGameplaySound();
+
         // Start or join (depends on gamemode) a session with a specific name
         await _runner.StartGame(new StartGameArgs()
         {
@@ -333,6 +366,10 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
             Scene = SceneManager.GetActiveScene().buildIndex,
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         });
+
+        mouseCursor.gameObject.SetActive(false);
+
+        Debug.Log("Started game!");
     }
 
     public void HostCoopGame()
