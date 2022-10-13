@@ -35,6 +35,10 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField]
     private TMP_InputField joinSessionName;
 
+    // Reference to the session lobby UI menu
+    [SerializeField]
+    private GameObject sessionUI;
+
     // Variables
     private int gameResult;
     private int numLives;
@@ -375,6 +379,8 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
         });
 
         mouseCursor.gameObject.SetActive(false);
+
+        sessionUI.SetActive(true);
 
         Debug.Log("Started game!");
     }
