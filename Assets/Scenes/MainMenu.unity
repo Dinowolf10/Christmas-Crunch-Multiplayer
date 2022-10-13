@@ -2522,7 +2522,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &383527162
 RectTransform:
   m_ObjectHideFlags: 0
@@ -7650,7 +7650,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1896087179
 RectTransform:
   m_ObjectHideFlags: 0
@@ -8003,6 +8003,10 @@ PrefabInstance:
       propertyPath: pauseMenu
       value: 
       objectReference: {fileID: 986663521}
+    - target: {fileID: 6196149859955960108, guid: c695181a831b5c44fb61456806a1fc36, type: 3}
+      propertyPath: sessionUI
+      value: 
+      objectReference: {fileID: 1896087178}
     - target: {fileID: 6196149859955960108, guid: c695181a831b5c44fb61456806a1fc36, type: 3}
       propertyPath: mouseCursor
       value: 
