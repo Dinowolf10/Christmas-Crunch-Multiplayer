@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 using Fusion;
 using Fusion.Sockets;
 using System;
+using TMPro;
 
 /// <summary>
 /// file: GameManager.cs
@@ -27,6 +28,12 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
 
     // Collections
     private HashSet<int> playedScenes = new HashSet<int>();
+
+    // Reference to input fields that hold the session name
+    [SerializeField]
+    private TMP_InputField hostSessionName;
+    [SerializeField]
+    private TMP_InputField joinSessionName;
 
     // Variables
     private int gameResult;
@@ -343,7 +350,7 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
         return roundNumber;
     }
 
-    async void StartGame(GameMode mode)
+    async void StartGame(GameMode mode, string sessionName)
     {
         // Create the Fusion runner and let it know that we will be providing user input
         _runner = gameObject.AddComponent<NetworkRunner>();
@@ -362,7 +369,7 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
         await _runner.StartGame(new StartGameArgs()
         {
             GameMode = mode,
-            SessionName = "TestRoom",
+            SessionName = sessionName,
             Scene = SceneManager.GetActiveScene().buildIndex,
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         });
@@ -374,11 +381,11 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
 
     public void HostCoopGame()
     {
-        StartGame(GameMode.Host);
+        StartGame(GameMode.Host, hostSessionName.text);
     }
 
     public void JoinCoopGame()
     {
-        StartGame(GameMode.Client);
+        StartGame(GameMode.Client, joinSessionName.text);
     }
 }
