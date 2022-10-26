@@ -50,6 +50,7 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
 
     // Networking callbacks
     private NetworkRunner _runner;
+    private NetworkSceneManagerDefault networkSceneManager;
     [SerializeField] private NetworkPrefabRef _playerPrefab;
     private Dictionary<PlayerRef, NetworkObject> _spawnedCharacters = new Dictionary<PlayerRef, NetworkObject>();
 
@@ -192,7 +193,14 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
         {
             soundManager.StopAllAudio();
             soundManager.PlayGameVictorySound();
-            SceneManager.LoadScene("GameWon");
+            if (_runner)
+            {
+                SceneManager.LoadScene("GameWon");
+            }
+            else
+            {
+                SceneManager.LoadScene("GameWon");
+            }
         }
         // Otherwise, load the next mini game
         else
@@ -206,8 +214,15 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
             // Add the scene index to the list of played games
             playedScenes.Add(idx);
 
-            // Load the new game
-            SceneManager.LoadScene(idx);
+            if (_runner)
+            {
+                _runner.SetActiveScene(idx);
+            }
+            else
+            {
+                // Load the new game
+                SceneManager.LoadScene(idx);
+            }
         }
     }
 
@@ -227,7 +242,14 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
     /// </summary>
     private void LoadBetweenScene()
     {
-        SceneManager.LoadScene("BetweenGames");
+        if (_runner)
+        {
+            _runner.SetActiveScene("BetweenGames");
+        }
+        else
+        {
+            SceneManager.LoadScene("BetweenGames");
+        }
 
         if (gameResult == 2)
         {
@@ -377,6 +399,8 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
             Scene = SceneManager.GetActiveScene().buildIndex,
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         });
+
+        networkSceneManager = GetComponent<NetworkSceneManagerDefault>();
 
         mouseCursor.gameObject.SetActive(false);
 
