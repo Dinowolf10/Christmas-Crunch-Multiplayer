@@ -52,7 +52,8 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
     private NetworkRunner _runner;
     private NetworkSceneManagerDefault networkSceneManager;
     [SerializeField] private NetworkPrefabRef _playerPrefab;
-    private Dictionary<PlayerRef, NetworkObject> _spawnedCharacters = new Dictionary<PlayerRef, NetworkObject>();
+    [SerializeField] private Dictionary<PlayerRef, NetworkObject> _spawnedCharacters = new Dictionary<PlayerRef, NetworkObject>();
+    [SerializeField] private List<PlayerRef> _spawnedCharactersRef = new List<PlayerRef>();
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
@@ -70,6 +71,7 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
             }
             
             _spawnedCharacters.Add(player, networkPlayerObject);
+            _spawnedCharactersRef.Add(player);
             Debug.Log("Spawned player");
             Debug.Log(_spawnedCharacters[player].GetComponent<Transform>().position);
         }
@@ -205,14 +207,16 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
         // Otherwise, load the next mini game
         else
         {
-            // Find the index of a game that hasn't been played yet
+            /*// Find the index of a game that hasn't been played yet
             while (playedScenes.Contains(idx = UnityEngine.Random.Range(3, 10)))
             {
                 continue;
             }
 
             // Add the scene index to the list of played games
-            playedScenes.Add(idx);
+            playedScenes.Add(idx);*/
+
+            idx = 4;
 
             if (_runner)
             {
@@ -417,5 +421,27 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
     public void JoinCoopGame()
     {
         StartGame(GameMode.Client, joinSessionName.text);
+    }
+
+    public bool IsMultiplayer()
+    {
+        if (_runner)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public NetworkRunner GetRunner()
+    {
+        return _runner;
+    }
+
+    public List<PlayerRef> GetSpawnedCharacters()
+    {
+        return _spawnedCharactersRef;
     }
 }

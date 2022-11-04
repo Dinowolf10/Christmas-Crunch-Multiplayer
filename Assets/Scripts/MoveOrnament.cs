@@ -22,7 +22,7 @@ public class MoveOrnament : MonoBehaviour
 
     // Variables
     private float deltaX, deltaY;
-    private bool locked = false;
+    [SerializeField] private bool locked = false;
 
     // Start is called before the first frame update
     void Start()

@@ -1,16 +1,18 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Fusion;
 
 /// <summary>
 /// file: DecorateTreeManager
 /// description: Manages the progress and completion of the Decorate Tree Mini Game
 /// author: Nathan Ballay
 /// </summary>
-public class DecorateTreeManager : MonoBehaviour
+public class DecorateTreeManager : NetworkBehaviour
 {
     // Prefabs
     [SerializeField] GameObject ornamentPrefab;
+    [SerializeField] GameObject ornamentNetworkedPrefab;
     [SerializeField] GameObject timerPrefab;
 
     // References
@@ -22,18 +24,24 @@ public class DecorateTreeManager : MonoBehaviour
 
     // Collections
     private List<GameObject> ornaments = new List<GameObject>();
+    [SerializeField] private List<NetworkObject> ornamentsNetworked = new List<NetworkObject>();
+    [SerializeField] [Networked, Capacity(5)] private NetworkArray<NetworkObject> ornamentsNetworkedSync { get; }
     [SerializeField] List<GameObject> treeBlocks = new List<GameObject>();
     [SerializeField] List<Sprite> sprites = new List<Sprite>();
 
     // Variables
+    private bool networkedOrnamentsSpawned = false;
     private bool isGameWon = false;
     private bool isTimeUp = false;
     private bool isWaiting = false;
     private GameObject newOrnament;
+    private NetworkObject newOrnamentNetworked;
     [SerializeField] float startingX;
     [SerializeField] float startingY;
     [SerializeField] float spawnVariability;
     private int numOrnaments;
+    private NetworkRunner runner;
+    [SerializeField] [Networked] public bool clientNeedsToSyncOrnaments { get; set; } = false;
 
     // Start is called before the first frame update
     void Start()
@@ -42,15 +50,25 @@ public class DecorateTreeManager : MonoBehaviour
 
         soundManager = GameObject.Find("SoundManager").GetComponent<SoundManager>();
 
+        runner = gameManager.GetRunner();
+
         timer = timerPrefab.GetComponent<Timer>();
 
-        SpawnOrnaments();
+        if (runner)
+        {
+            networkedOrnamentsSpawned = false;
+        }
+        else
+        {
+            networkedOrnamentsSpawned = true;
+            SpawnOrnaments();
+        }
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (gameManager.isGamePaused())
+        if (gameManager.isGamePaused() || !networkedOrnamentsSpawned || clientNeedsToSyncOrnaments)
         {
             return;
         }
@@ -77,6 +95,24 @@ public class DecorateTreeManager : MonoBehaviour
         }
     }
 
+    public override void FixedUpdateNetwork()
+    {
+        if (!networkedOrnamentsSpawned)
+        {
+            Debug.Log("Creating network ornaments");
+            SpawnOrnaments();
+            return;
+        }
+
+        if (clientNeedsToSyncOrnaments)
+        {
+            Debug.Log("Client needs to sync ornaments");
+            SyncOrnaments();
+            clientNeedsToSyncOrnaments = false;
+            return;
+        }
+    }
+
     /// <summary>
     /// Spawns ornaments with some variability and fills the collection
     /// </summary>
@@ -93,11 +129,55 @@ public class DecorateTreeManager : MonoBehaviour
             numOrnaments = 5;
         }
 
+        if (runner)
+        {
+            if (runner.IsServer)
+            {
+                List<PlayerRef> spawnedCharacters = gameManager.GetSpawnedCharacters();
+                for (int i = 0; i < numOrnaments; i++)
+                {
+                    newOrnamentNetworked = runner.Spawn(ornamentNetworkedPrefab, RandomSpawnLocation(), Quaternion.identity, inputAuthority: spawnedCharacters[1], InitializeRandomSpriteBeforeSpawn);
+                    Debug.Log(newOrnamentNetworked);
+                    // Add ornament to networked ornaments list
+                    ornamentsNetworked.Add(newOrnamentNetworked);
+                    ornamentsNetworkedSync.Set(i, newOrnamentNetworked);
+                }
+            }
+
+            networkedOrnamentsSpawned = true;
+            clientNeedsToSyncOrnaments = true;
+
+           // SyncOrnaments();
+
+            /*for (int i = 0; i < numOrnaments; i++)
+            {
+                ornamentsNetworked[i].GetComponent<SpriteRenderer>().sprite = ChooseRandomSprite();
+            }*/
+        }
+        else
+        {
+            for (int i = 0; i < numOrnaments; i++)
+            {
+                newOrnament = Instantiate(ornamentPrefab, RandomSpawnLocation(), Quaternion.identity);
+                newOrnament.GetComponent<SpriteRenderer>().sprite = ChooseRandomSprite();
+
+                // Add ornament to ornaments list
+                ornaments.Add(newOrnament);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Syncs networked ornaments list with the networked ornaments property array
+    /// </summary>
+    private void SyncOrnaments()
+    {
+        Debug.Log("Syncing ornaments for client");
         for (int i = 0; i < numOrnaments; i++)
         {
-            newOrnament = Instantiate(ornamentPrefab, RandomSpawnLocation(), Quaternion.identity);
-            newOrnament.GetComponent<SpriteRenderer>().sprite = ChooseRandomSprite();
-            ornaments.Add(newOrnament);
+            ornamentsNetworked.Add(ornamentsNetworkedSync.Get(i));
+            ornamentsNetworked[i].GetComponent<SpriteRenderer>().sprite = ChooseRandomSprite();
+            Debug.Log("Synced: " + ornamentsNetworkedSync.Get(i).name);
         }
     }
 
@@ -125,14 +205,32 @@ public class DecorateTreeManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 
+    /// </summary>
+    private void InitializeRandomSpriteBeforeSpawn(NetworkRunner runner, NetworkObject obj)
+    {
+        obj.GetComponent<SpriteRenderer>().sprite = ChooseRandomSprite();
+    }
+
+    /// <summary>
     /// Locks all ornaments at their current location
     /// </summary>
     private void LockAllOrnaments()
     {
-        foreach (GameObject ornament in ornaments)
+        if (runner)
         {
-            ornament.GetComponent<MoveOrnament>().LockOrnament();
+            foreach (NetworkObject ornament in ornamentsNetworked)
+            {
+                ornament.GetComponent<MoveOrnament>().LockOrnament();
+            }
         }
+        else
+        {
+            foreach (GameObject ornament in ornaments)
+            {
+                ornament.GetComponent<MoveOrnament>().LockOrnament();
+            }
+        }    
     }
 
     /// <summary>
@@ -140,15 +238,33 @@ public class DecorateTreeManager : MonoBehaviour
     /// </summary>
     private void CheckOrnamentPlacement()
     {
-        for (int i = 0; i < ornaments.Count; i++)
+        if (runner)
         {
-            for (int j = 0; j < treeBlocks.Count; j++)
+            for (int i = 0; i < ornamentsNetworked.Count; i++)
             {
-                // If the player drops and unlocked ornament over the tree, lock it in place
-                if (AABBCollision(ornaments[i], treeBlocks[j]) && !ornaments[i].GetComponent<MoveOrnament>().isLocked() && !Input.GetMouseButton(0))
+                for (int j = 0; j < treeBlocks.Count; j++)
                 {
-                    soundManager.PlayGrabSound();
-                    ornaments[i].GetComponent<MoveOrnament>().LockOrnament();
+                    // If the player drops and unlocked ornament over the tree, lock it in place
+                    if (AABBCollisionNetworked(ornamentsNetworked[i], treeBlocks[j]) && !ornamentsNetworked[i].GetComponent<MoveOrnament>().isLocked() && !Input.GetMouseButton(0))
+                    {
+                        soundManager.PlayGrabSound();
+                        ornamentsNetworked[i].GetComponent<MoveOrnament>().LockOrnament();
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < ornaments.Count; i++)
+            {
+                for (int j = 0; j < treeBlocks.Count; j++)
+                {
+                    // If the player drops and unlocked ornament over the tree, lock it in place
+                    if (AABBCollision(ornaments[i], treeBlocks[j]) && !ornaments[i].GetComponent<MoveOrnament>().isLocked() && !Input.GetMouseButton(0))
+                    {
+                        soundManager.PlayGrabSound();
+                        ornaments[i].GetComponent<MoveOrnament>().LockOrnament();
+                    }
                 }
             }
         }
@@ -196,18 +312,73 @@ public class DecorateTreeManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Checks for a collision between two objects using the AABB method
+    /// </summary>
+    /// <param name="o1">The networked object being considered for a collision</param>
+    /// <param name="o2">Second game object being considered for a collision</param>
+    /// <returns>boolean determining whether a collision has occurred</returns>
+    public bool AABBCollisionNetworked(NetworkObject o1, GameObject o2)
+    {
+        // Get references to bounds of both objects
+        Bounds bounds1 = o1.GetComponent<SpriteRenderer>().bounds;
+        Bounds bounds2 = o2.GetComponent<SpriteRenderer>().bounds;
+
+        // Find all mins and maxes of o1
+        float minX1 = bounds1.min.x;
+        float maxX1 = bounds1.max.x;
+        float minY1 = bounds1.min.y;
+        float maxY1 = bounds1.max.y;
+
+        // Find all mins and maxes of o2
+        float minX2 = bounds2.min.x;
+        float maxX2 = bounds2.max.x;
+        float minY2 = bounds2.min.y;
+        float maxY2 = bounds2.max.y;
+
+        // Check all necessary conditions for a collision
+        bool cond1 = minX2 < maxX1;
+        bool cond2 = maxX2 > minX1;
+        bool cond3 = maxY2 > minY1;
+        bool cond4 = minY2 < maxY1;
+
+        // Determine if collision has occurred
+        if (cond1 && cond2 && cond3 && cond4)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Checks whether all ornaments have been properly placed
     /// </summary>
     private void CheckComplete()
     {
         bool isComplete = true;
 
-        foreach (GameObject ornament in ornaments)
+        if (runner)
         {
-            if (!ornament.GetComponent<MoveOrnament>().isLocked())
+            foreach (NetworkObject ornament in ornamentsNetworked)
             {
-                isComplete = false;
-                break;
+                if (!ornament.GetComponent<MoveOrnament>().isLocked())
+                {
+                    isComplete = false;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            foreach (GameObject ornament in ornaments)
+            {
+                if (!ornament.GetComponent<MoveOrnament>().isLocked())
+                {
+                    isComplete = false;
+                    break;
+                }
             }
         }
 

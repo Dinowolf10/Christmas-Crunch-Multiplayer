@@ -412,6 +412,7 @@ GameObject:
   m_Component:
   - component: {fileID: 615864866}
   - component: {fileID: 615864867}
+  - component: {fileID: 615864868}
   m_Layer: 0
   m_Name: SceneManager
   m_TagString: Untagged
@@ -445,7 +446,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20485e2aa83e60047b569082318eb87b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _interpolationDataSource: 0
   ornamentPrefab: {fileID: 5267324487747365994, guid: f9d33486fa8f50340a142b7cd5d6bdff, type: 3}
+  ornamentNetworkedPrefab: {fileID: 4836145682205583674, guid: f2f585c2d708ac0438220f75ea9f0708, type: 3}
   timerPrefab: {fileID: 1002814176}
   sparkle1: {fileID: 1841702395}
   sparkle2: {fileID: 1523632708}
@@ -465,6 +468,30 @@ MonoBehaviour:
   startingX: -5
   startingY: -2
   spawnVariability: 2
+--- !u!114 &615864868
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 615864865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObjectInterest: 1
+  DefaultInterestGroups: []
+  DestroyWhenStateAuthorityLeaves: 0
+  AllowStateAuthorityOverride: 1
+  AoiPositionSource: {fileID: 0}
+  Flags: 2561
+  NetworkGuid:
+    RawGuidValue: 2827bb0dc13f4524bdf897e243917565
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 615864867}
+  SimulationBehaviours: []
 --- !u!1 &814778313
 GameObject:
   m_ObjectHideFlags: 0
