@@ -39,6 +39,8 @@ public class MoveOrnament : NetworkBehaviour
 
         initialPosition = transform.position;
         ornamentPosition = transform.position;
+
+        GetComponent<SpriteRenderer>().sprite = GameObject.Find("SceneManager").GetComponent<DecorateTreeManager>().ChooseRandomSprite();
     }
 
     //public override void FixedUpdateNetwork()

@@ -12,8 +12,8 @@ public class MouseCursorNetworked : NetworkBehaviour
             transform.position = data.mousePosition;
             if (data.mouseDown && Runner.IsServer && SceneManager.GetActiveScene().name == "DecorateTree")
             {
-                Debug.Log("Getting mouse input");
-                GameObject.Find("SceneManager").GetComponent<DecorateTreeManager>().UpdateClientInput(data);
+                //Debug.Log("Getting mouse input");
+                //GameObject.Find("SceneManager").GetComponent<DecorateTreeManager>().UpdateClientInput(data);
                 //RaycastHit2D hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
                 /*RaycastHit2D hit = Physics2D.Raycast(data.mousePosition, Vector2.zero);
                 if (hit.collider != null)
