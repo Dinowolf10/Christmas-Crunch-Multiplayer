@@ -6,6 +6,7 @@ TagManager:
   tags:
   - ChoppableFood
   - SantaHat
+  - Ornament
   layers:
   - Default
   - TransparentFX

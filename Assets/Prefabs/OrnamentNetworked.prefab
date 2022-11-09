@@ -16,7 +16,7 @@ GameObject:
   - component: {fileID: -198888761352679098}
   m_Layer: 0
   m_Name: OrnamentNetworked
-  m_TagString: Untagged
+  m_TagString: Ornament
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -99,9 +99,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b50dd6561fedc064c99cf68900443386, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _interpolationDataSource: 0
   tree: {fileID: 5132812019861968428, guid: 6a699d858e1c09d43b2fd1db5490a97e, type: 3}
   timer: {fileID: 4317444884409814655, guid: d920bf87d65f68f4485d0948a00f671c, type: 3}
   locked: 0
+  isGettingDragged: 0
 --- !u!58 &1350299482590575895
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -140,6 +142,7 @@ MonoBehaviour:
     RawGuidValue: f2f585c2d708ac0438220f75ea9f0708
   NestedObjects: []
   NetworkedBehaviours:
+  - {fileID: 6017153578493209586}
   - {fileID: -198888761352679098}
   SimulationBehaviours: []
 --- !u!114 &-198888761352679098

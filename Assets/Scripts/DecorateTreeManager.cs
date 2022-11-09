@@ -21,6 +21,7 @@ public class DecorateTreeManager : NetworkBehaviour
     private Timer timer;
     private GameManager gameManager;
     private SoundManager soundManager;
+    [SerializeField] [Networked] NetworkObject clientDecorateTreeManager { get; set; }
 
     // Collections
     private List<GameObject> ornaments = new List<GameObject>();
@@ -42,6 +43,10 @@ public class DecorateTreeManager : NetworkBehaviour
     private int numOrnaments;
     private NetworkRunner runner;
     [SerializeField] [Networked] public bool clientNeedsToSyncOrnaments { get; set; } = false;
+    [SerializeField] [Networked] public bool clientDecorateTreeManagerNeedsToSync { get; set; } = true;
+    [SerializeField] private bool playerDraggingOrnament = false;
+    [SerializeField] private MoveOrnament currentDraggedOrnament;
+    private Vector2 mousePosition;
 
     // Start is called before the first frame update
     void Start()
@@ -57,6 +62,11 @@ public class DecorateTreeManager : NetworkBehaviour
         if (runner)
         {
             networkedOrnamentsSpawned = false;
+            //Debug.Log(runner.LocalPlayer);
+            //Debug.Log(GetComponent<NetworkObject>());
+            //GetComponent<NetworkObject>().AssignInputAuthority(runner.LocalPlayer);
+            //List<PlayerRef> spawnedCharacters = gameManager.GetSpawnedCharacters();
+            //GetComponent<NetworkObject>().AssignInputAuthority(spawnedCharacters[0]);
         }
         else
         {
@@ -97,6 +107,25 @@ public class DecorateTreeManager : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
+        /*if (clientDecorateTreeManager != null)
+        {
+            if (runner.IsClient)
+            {
+                Debug.Log("Set client decorate tree manager");
+                clientDecorateTreeManager = this.gameObject.GetComponent<NetworkObject>();
+            }
+            return;
+        }
+        else if (clientDecorateTreeManagerNeedsToSync)
+        {
+            if (runner.IsServer)
+            {
+                List<PlayerRef> spawnedCharacters = gameManager.GetSpawnedCharacters();
+                clientDecorateTreeManager.AssignInputAuthority(spawnedCharacters[1]);
+                clientDecorateTreeManagerNeedsToSync = false;
+            }
+        }*/
+
         if (!networkedOrnamentsSpawned)
         {
             Debug.Log("Creating network ornaments");
@@ -106,11 +135,108 @@ public class DecorateTreeManager : NetworkBehaviour
 
         if (clientNeedsToSyncOrnaments)
         {
-            Debug.Log("Client needs to sync ornaments");
-            SyncOrnaments();
+            if (runner.IsClient)
+            {
+                Debug.Log("Client needs to sync ornaments");
+                SyncOrnaments();
+            }
             clientNeedsToSyncOrnaments = false;
             return;
         }
+
+        //Debug.Log("Trying to get input", this.gameObject);
+        if (GetInput(out NetworkInputData data))
+        {
+            //Debug.Log("Got input", this.gameObject);
+            if (data.mouseDown)
+            {
+                if (playerDraggingOrnament)
+                {
+                    Debug.Log("Dragging ornament", currentDraggedOrnament);
+                    Debug.Log("Setting position: " + data.mousePosition);
+                    //currentDraggedOrnament.SetDeltaOffset(data.mousePosition);
+                    //currentDraggedOrnament.ornamentPosition = new Vector2(mousePosition.x - currentDraggedOrnament.GetDeltaX(), mousePosition.y - currentDraggedOrnament.GetDeltaY());
+                    currentDraggedOrnament.ornamentPosition = data.mousePosition;
+                    return;
+                }
+                else
+                {
+                    RaycastHit2D hit = Physics2D.Raycast(data.mousePosition, Vector2.zero);
+                    if (hit.collider != null)
+                    {
+                        Debug.Log("Hit an object object", this.gameObject);
+                        if (hit.collider.tag == "Ornament")
+                        {
+                            Debug.Log("Dragging ornament, updating ornament position:", this.gameObject);
+                            //mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                            mousePosition = data.mousePosition;
+                            //transform.position = new Vector2(mousePosition.x - deltaX, mousePosition.y - deltaY);
+                            MoveOrnament moveOrnamnet = hit.collider.GetComponent<MoveOrnament>();
+                            currentDraggedOrnament = moveOrnamnet;
+                            moveOrnamnet.SetDeltaOffset(data.mousePosition);
+                            moveOrnamnet.ornamentPosition = new Vector2(mousePosition.x - moveOrnamnet.GetDeltaX(), mousePosition.y - moveOrnamnet.GetDeltaY());
+                            Debug.Log("New ornament position: " + moveOrnamnet.ornamentPosition, moveOrnamnet.gameObject);
+                            playerDraggingOrnament = true;
+                            moveOrnamnet.isGettingDragged = true;
+                            return;
+                        }
+                    }
+                }
+            }
+            playerDraggingOrnament = false;
+            if (currentDraggedOrnament != null)
+            {
+                currentDraggedOrnament.isGettingDragged = false;
+                currentDraggedOrnament = null;
+            }
+        }
+        else
+        {
+            if (runner.IsServer)
+            {
+                Debug.Log("Assigning input authority");
+                List<PlayerRef> spawnedCharacters = gameManager.GetSpawnedCharacters();
+                GetComponent<NetworkObject>().AssignInputAuthority(spawnedCharacters[1]);
+                //GetComponent<NetworkObject>().AssignInputAuthority(runner.LocalPlayer);
+            }
+        }
+    }
+
+    public void UpdateClientInput(NetworkInputData data)
+    {
+        if (playerDraggingOrnament)
+        {
+            Debug.Log("Dragging ornament", currentDraggedOrnament);
+            Debug.Log("Setting position: " + data.mousePosition);
+            //currentDraggedOrnament.SetDeltaOffset(data.mousePosition);
+            //currentDraggedOrnament.ornamentPosition = new Vector2(mousePosition.x - currentDraggedOrnament.GetDeltaX(), mousePosition.y - currentDraggedOrnament.GetDeltaY());
+            currentDraggedOrnament.ornamentPosition = data.mousePosition;
+            return;
+        }
+        else
+        {
+            RaycastHit2D hit = Physics2D.Raycast(data.mousePosition, Vector2.zero);
+            if (hit.collider != null)
+            {
+                Debug.Log("Hit an object object", this.gameObject);
+                if (hit.collider.tag == "Ornament")
+                {
+                    Debug.Log("Dragging ornament, updating ornament position:", this.gameObject);
+                    //mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                    mousePosition = data.mousePosition;
+                    //transform.position = new Vector2(mousePosition.x - deltaX, mousePosition.y - deltaY);
+                    MoveOrnament moveOrnamnet = hit.collider.GetComponent<MoveOrnament>();
+                    currentDraggedOrnament = moveOrnamnet;
+                    moveOrnamnet.SetDeltaOffset(data.mousePosition);
+                    moveOrnamnet.ornamentPosition = new Vector2(mousePosition.x - moveOrnamnet.GetDeltaX(), mousePosition.y - moveOrnamnet.GetDeltaY());
+                    Debug.Log("New ornament position: " + moveOrnamnet.ornamentPosition, moveOrnamnet.gameObject);
+                    playerDraggingOrnament = true;
+                    moveOrnamnet.isGettingDragged = true;
+                    return;
+                }
+            }
+        }
+        playerDraggingOrnament = false;
     }
 
     /// <summary>
@@ -136,7 +262,8 @@ public class DecorateTreeManager : NetworkBehaviour
                 List<PlayerRef> spawnedCharacters = gameManager.GetSpawnedCharacters();
                 for (int i = 0; i < numOrnaments; i++)
                 {
-                    newOrnamentNetworked = runner.Spawn(ornamentNetworkedPrefab, RandomSpawnLocation(), Quaternion.identity, inputAuthority: spawnedCharacters[1], InitializeRandomSpriteBeforeSpawn);
+                    newOrnamentNetworked = runner.Spawn(ornamentNetworkedPrefab, RandomSpawnLocation(), Quaternion.identity, inputAuthority: spawnedCharacters[0], InitializeRandomSpriteBeforeSpawn);
+                    //newOrnamentNetworked = runner.Spawn(ornamentNetworkedPrefab, RandomSpawnLocation(), Quaternion.identity, inputAuthority: null, InitializeRandomSpriteBeforeSpawn);
                     Debug.Log(newOrnamentNetworked);
                     // Add ornament to networked ornaments list
                     ornamentsNetworked.Add(newOrnamentNetworked);

@@ -63,13 +63,13 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
             // Create a unique position for the player
             Vector3 spawnPosition = new Vector3((player.RawEncoded % runner.Config.Simulation.DefaultPlayers) * 3, 1, 0);
             NetworkObject networkPlayerObject = runner.Spawn(_playerPrefab, spawnPosition, Quaternion.identity, player);
-            // Keep track of the player avatars so we can remove it when they disconnect
             
             if (networkPlayerObject == null)
             {
                 Debug.Log("Trying to spawn null player");
             }
-            
+
+            // Keep track of the player avatars so we can remove it when they disconnect
             _spawnedCharacters.Add(player, networkPlayerObject);
             _spawnedCharactersRef.Add(player);
             Debug.Log("Spawned player");
@@ -98,8 +98,11 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
     public void OnInput(NetworkRunner runner, NetworkInput input) 
     {
         var data = new NetworkInputData();
-
         data.mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        data.mouseDown = Input.GetMouseButton(0);
+        //Debug.Log("Getting input: ");
+        //Debug.Log("Mouse Position: " + data.mousePosition);
+        //Debug.Log("Mouse Down: " + data.mouseDown);
 
         input.Set(data);
     }
