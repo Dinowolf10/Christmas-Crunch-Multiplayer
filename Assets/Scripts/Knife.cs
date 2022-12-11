@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Fusion;
 
 public class Knife : MonoBehaviour
 {
@@ -16,16 +17,44 @@ public class Knife : MonoBehaviour
     [SerializeField]
     private float mouseX, mouseY;
 
+    [SerializeField]
+    private GameManager gameManager;
+
+    private NetworkRunner runner;
+
     // Start is called before the first frame update
     void Start()
     {
-        
+        if (!choppingFoodManager)
+        {
+            choppingFoodManager = GameObject.Find("ChoppingFoodManager").GetComponent<ChoppingFoodManager>();
+        }
+
+        if (!slashTransform)
+        {
+            slashTransform = GameObject.Find("Slash").transform;
+        }
+
+        if (!slashAnimator)
+        {
+            slashAnimator = GameObject.Find("Slash").GetComponent<Animator>();
+        }
+
+        if (!gameManager)
+        {
+            gameManager = GameObject.Find("GameManager").GetComponent<GameManager>();
+        }
+
+        runner = gameManager.GetRunner();
     }
 
     // Update is called once per frame
     void Update()
     {
-        UpdateMouseInput();
+        if (!runner)
+        {
+            UpdateMouseInput();
+        }
     }
 
     private void UpdateMouseInput()
@@ -36,54 +65,35 @@ public class Knife : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        Transform collisionTransform = collision.transform;
-
-        if (collisionTransform.gameObject.tag == "ChoppableFood" && (Mathf.Abs(mouseX) > 0 || Mathf.Abs(mouseY) > 0))
+        if (!runner)
         {
-            slashAnimator.SetBool("isSlashing", false);
-            StopCoroutine("Slash");
-            StartCoroutine("Slash");
+            Transform collisionTransform = collision.transform;
 
-            collisionTransform.GetComponent<ChoppableFood>().GetChopped();
+            if (collisionTransform.gameObject.tag == "ChoppableFood" && (Mathf.Abs(mouseX) > 0 || Mathf.Abs(mouseY) > 0))
+            {
+                ChopFruit(collision.gameObject);
+            }
+            else if (collisionTransform.gameObject.tag == "SantaHat")
+            {
+                Debug.Log("Hit " + collisionTransform.gameObject.name);
 
-            collisionTransform.GetComponent<BoxCollider2D>().enabled = false;
-
-            collisionTransform.GetComponent<SpriteRenderer>().enabled = false;
-
-            collisionTransform.GetComponentInChildren<ParticleSystem>().Play();
-
-            //choppingFoodManager.slashAudio.Play();
-            choppingFoodManager.getSoundManager().PlaySlashSound();
-            choppingFoodManager.getSoundManager().PlaySplatSound();
-
-            choppingFoodManager.RemoveFoodToChop(collisionTransform.GetComponent<Rigidbody2D>());
-        }
-        else if (collisionTransform.gameObject.tag == "SantaHat")
-        {
-            Debug.Log("Hit " + collisionTransform.gameObject.name);
-
-            slashAnimator.SetBool("isSlashing", false);
-            StopCoroutine("Slash");
-            StartCoroutine("Slash");
-
-            collisionTransform.GetComponent<ChoppableFood>().GetChopped();
-
-            collisionTransform.GetComponent<BoxCollider2D>().enabled = false;
-
-            collisionTransform.GetComponent<SpriteRenderer>().enabled = false;
-
-            choppingFoodManager.getSoundManager().PlaySlashSound();
-            choppingFoodManager.getSoundManager().PlayWrongChoiceSound();
-
-            choppingFoodManager.LoseGame();
+                ChopHat(collision.gameObject);
+            }
         }
     }
 
     private IEnumerator Slash()
     {
-        Vector2 mousePos = choppingFoodManager.GetMousePosition();
+        if (runner)
+        {
+            slashTransform.position = this.transform.position;
+        }
+        else
+        {
+            Vector2 mousePos = choppingFoodManager.GetMousePosition();
 
-        slashTransform.position = new Vector2(mousePos.x, mousePos.y);
+            slashTransform.position = new Vector2(mousePos.x, mousePos.y);
+        }
 
         if (mouseX < 0 || mouseY > 0)
         {
@@ -99,5 +109,44 @@ public class Knife : MonoBehaviour
         yield return new WaitForSeconds(0.25f);
 
         slashAnimator.SetBool("isSlashing", false);
+    }
+
+    public void ChopFruit(GameObject fruit)
+    {
+        slashAnimator.SetBool("isSlashing", false);
+        StopCoroutine("Slash");
+        StartCoroutine("Slash");
+
+        fruit.GetComponent<ChoppableFood>().GetChopped();
+
+        fruit.GetComponent<BoxCollider2D>().enabled = false;
+
+        fruit.GetComponent<SpriteRenderer>().enabled = false;
+
+        fruit.GetComponentInChildren<ParticleSystem>().Play();
+
+        //choppingFoodManager.slashAudio.Play();
+        choppingFoodManager.getSoundManager().PlaySlashSound();
+        choppingFoodManager.getSoundManager().PlaySplatSound();
+
+        choppingFoodManager.RemoveFoodToChop(fruit.GetComponent<Rigidbody2D>());
+    }
+
+    public void ChopHat(GameObject hat)
+    {
+        slashAnimator.SetBool("isSlashing", false);
+        StopCoroutine("Slash");
+        StartCoroutine("Slash");
+
+        hat.GetComponent<ChoppableFood>().GetChopped();
+
+        hat.GetComponent<BoxCollider2D>().enabled = false;
+
+        hat.GetComponent<SpriteRenderer>().enabled = false;
+
+        choppingFoodManager.getSoundManager().PlaySlashSound();
+        choppingFoodManager.getSoundManager().PlayWrongChoiceSound();
+
+        choppingFoodManager.LoseGame();
     }
 }

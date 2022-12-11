@@ -356,7 +356,9 @@ public class DecorateTreeManager : NetworkBehaviour
     /// </summary>
     private void SyncOrnaments()
     {
-        Debug.Log("Syncing ornaments for client");
+        // This may have been a root cause to the problem of why both the host and client weere unable to both move all ornaments.
+        // The client having their own synced ornaments may have been fighting with the host, leading to one or the other having control/overriding.
+        /*Debug.Log("Syncing ornaments for client");
         for (int i = 0; i < numOrnaments; i++)
         {
             ornamentsNetworked.Add(ornamentsNetworkedSync.Get(i));
@@ -366,7 +368,7 @@ public class DecorateTreeManager : NetworkBehaviour
             clientDecorateTreeManager.ornamentsNetworked.Add(clientDecorateTreeManager.ornamentsNetworkedSync.Get(i));
             clientDecorateTreeManager.ornamentsNetworked[i].GetComponent<SpriteRenderer>().sprite = ChooseRandomSprite();
             Debug.Log("Synced: " + clientDecorateTreeManager.ornamentsNetworkedSync.Get(i).name, clientDecorateTreeManager.ornamentsNetworkedSync.Get(i));
-        }
+        }*/
     }
 
     /// <summary>

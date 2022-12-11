@@ -1,14 +1,29 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Fusion;
 
-public class ChoppingFoodManager : MonoBehaviour
+public class ChoppingFoodManager : NetworkBehaviour
 {
     [SerializeField]
     private Camera cam;
 
     [SerializeField]
+    private GameObject knifePrefab;
+
+    [SerializeField]
     private Transform knife;
+
+    [SerializeField]
+    public Transform clientKnife;
+
+    [SerializeField] [Networked] public NetworkObject clientKnifeNetworked { get; set; }
+
+    [SerializeField]
+    private GameObject choppingFoodManagerClientPrefab;
+
+    [SerializeField]
+    private ChoppingFoodManagerClient choppingFoodManagerClient;
 
     private Vector2 mousePos;
 
@@ -22,18 +37,40 @@ public class ChoppingFoodManager : MonoBehaviour
     [SerializeField]
     private List<Rigidbody2D> foods;
 
+    [SerializeField]
+    private List<Rigidbody2D> foodsNetworked;
+
     // Populated in editor
     [SerializeField]
     private List<Rigidbody2D> santaHats;
-    
+
+    // Populated in editor
+    [SerializeField]
+    private List<Rigidbody2D> santaHatsNetworked;
+
     [SerializeField]
     private List<Rigidbody2D> foodsToChop;
 
+    [SerializeField]
+    private List<Rigidbody2D> foodsToChopNetworked;
+
     private bool isCutting = false;
     private bool isWaiting = false;
+    private bool needToSpawnClientManager = false;
+    private bool needToSpawnClientKnife = false;
 
     private GameManager gameManager;
     private SoundManager soundManager;
+
+    private NetworkRunner runner;
+
+    [SerializeField] [Networked] public bool needToThrowFood { get; set; } = true;
+
+    private float delayFruitVisibleCheck = 3.0f;
+    private bool canCheckFruitVisibility = false;
+
+    [SerializeField] [Networked] public bool isGameWonNetworked { get; set; } = false;
+    [SerializeField] [Networked] public bool wonOrLost { get; set; } = false;
 
     // Start is called before the first frame update
     private void Start()
@@ -42,7 +79,17 @@ public class ChoppingFoodManager : MonoBehaviour
 
         soundManager = GameObject.Find("SoundManager").GetComponent<SoundManager>();
 
-        ThrowFoodUp();
+        runner = gameManager.GetRunner();
+
+        if (!runner)
+        {
+            ThrowFoodUp();
+        }
+        else
+        {
+            needToSpawnClientManager = true;
+            needToSpawnClientKnife = true;
+        }
     }
 
     // Update is called once per frame
@@ -53,7 +100,10 @@ public class ChoppingFoodManager : MonoBehaviour
             return;
         }
 
-        UpdateKnife();
+        if (!runner)
+        {
+            UpdateKnife();
+        }
 
         /*if (Input.GetMouseButtonDown(0))
         {
@@ -70,14 +120,131 @@ public class ChoppingFoodManager : MonoBehaviour
         }*/
     }
 
+    public override void FixedUpdateNetwork()
+    {
+        if (runner.IsClient && wonOrLost && !isWaiting)
+        {
+            if (isGameWonNetworked)
+            {
+                gameManager.WonMiniGame();
+            }
+            else
+            {
+                gameManager.LostMiniGame();
+            }
+            isWaiting = true;
+            wonOrLost = false;
+            return;
+        }
+
+        if (needToSpawnClientManager && runner.IsServer)
+        {
+            List<PlayerRef> spawnedCharacters = gameManager.GetSpawnedCharacters();
+            choppingFoodManagerClient = runner.Spawn(choppingFoodManagerClientPrefab, Vector2.zero, Quaternion.identity, inputAuthority: spawnedCharacters[1]).GetComponent<ChoppingFoodManagerClient>();
+            needToSpawnClientManager = false;
+            return;
+        }
+
+        if (needToSpawnClientKnife && runner.IsServer)
+        {
+            List<PlayerRef> spawnedCharacters = gameManager.GetSpawnedCharacters();
+            clientKnife = runner.Spawn(knifePrefab, Vector2.zero, Quaternion.identity, inputAuthority: spawnedCharacters[1]).transform;
+            clientKnifeNetworked = clientKnife.GetComponent<NetworkObject>();
+            needToSpawnClientKnife = false;
+            choppingFoodManagerClient.knife = clientKnife;
+            return;
+        }
+
+        if (runner.IsClient)
+        {
+            if (!clientKnife)
+            {
+                clientKnife = clientKnifeNetworked.GetComponent<Transform>();
+            }
+            return;
+        }
+
+        if (needToThrowFood)
+        {
+            Debug.Log("Throw food up called in fixed update");
+            ThrowFoodUp();
+            needToThrowFood = false;
+            StartCoroutine("StartDelayFruitVisibleCheck");
+            return;
+        }
+
+        if (GetInput(out NetworkInputData data))
+        {
+            UpdateKnife(data);
+
+            RaycastHit2D hit = Physics2D.Raycast(data.mousePosition, Vector2.zero);
+            if (hit.collider != null)
+            {
+                //Debug.Log("Hit an object object", hit.collider.gameObject);
+                if (hit.collider.tag == "ChoppableFood")
+                {
+                    Debug.Log("Starting chop on this fruit", hit.collider.gameObject);
+                    if (!hit.collider.GetComponent<ChoppableFood>().hasBeenChopped)
+                    {
+                        knife.GetComponent<Knife>().ChopFruit(hit.collider.gameObject);
+                    }
+                    return;
+                }
+                else if (hit.collider.tag == "SantaHat")
+                {
+                    Debug.Log("Starting chop on this santa hat", hit.collider.gameObject);
+                    if (!hit.collider.GetComponent<ChoppableFood>().hasBeenChopped)
+                    {
+                        knife.GetComponent<Knife>().ChopHat(hit.collider.gameObject);
+                    }
+                    return;
+                }
+            }
+
+            if (canCheckFruitVisibility && !isWaiting)
+            {
+                for (int i = 0; i < foodsToChopNetworked.Count; i++)
+                {
+                    Debug.Log(foodsToChopNetworked[i].GetComponent<Renderer>().isVisible, foodsToChopNetworked[i]);
+
+                    if (!foodsToChopNetworked[i].GetComponent<Renderer>().isVisible && !foodsToChopNetworked[i].GetComponent<ChoppableFood>().hasBeenChopped)
+                    {
+                        Debug.Log("Lost game");
+                        wonOrLost = true;
+                        isGameWonNetworked = false;
+                        isWaiting = true;
+                        LoseGame();
+                        return;
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (runner.IsServer)
+            {
+                Debug.Log("Assigning input authority");
+                GetComponent<NetworkObject>().AssignInputAuthority(runner.LocalPlayer);
+            }
+        }
+    }
+
     /// <summary>
     /// Updates knife position to current mouse position
     /// </summary>
     private void UpdateKnife()
     {
         mousePos = cam.ScreenToWorldPoint(Input.mousePosition);
-
         knife.position = new Vector2(mousePos.x, mousePos.y);
+    }
+
+    /// <summary>
+    /// Updates knife position to current mouse position
+    /// </summary>
+    /// <param name="data"></param>
+    private void UpdateKnife(NetworkInputData data)
+    {
+        knife.position = data.mousePosition;
     }
 
     private void ThrowFoodUp()
@@ -96,16 +263,40 @@ public class ChoppingFoodManager : MonoBehaviour
             i = 4;
         }
 
-        while (i > 0)
-        {
-            santaHats[i - 1].AddForce(new Vector2(Random.Range(-1.0f, 1.0f), Random.Range(0.75f, 1.5f) * throwForce), ForceMode2D.Impulse);
+        Debug.Log("Throwing up food");
 
-            f = foods[Random.Range(0, foods.Count)];
-            f.AddForce(new Vector2(Random.Range(-1.5f, 1.5f), Random.Range(0.8f, 1.2f) * throwForce), ForceMode2D.Impulse);
-            Debug.Log(f.name);
-            foodsToChop.Add(f);
-            foods.Remove(f);
-            i--;
+        if (runner)
+        {
+            Debug.Log("There is a runner");
+            if (runner.IsServer)
+            {
+                Debug.Log("Runner is the server");
+                while (i > 0)
+                {
+                    Debug.Log("Looping through");
+                    santaHatsNetworked[i - 1].AddForce(new Vector2(Random.Range(-1.0f, 1.0f), Random.Range(0.75f, 1.5f) * throwForce), ForceMode2D.Impulse);
+                    f = foodsNetworked[Random.Range(0, foodsNetworked.Count)];
+                    f.AddForce(new Vector2(Random.Range(-1.5f, 1.5f), Random.Range(0.8f, 1.2f) * throwForce), ForceMode2D.Impulse);
+                    Debug.Log(f.velocity, f);
+                    Debug.Log(f.name, f);
+                    foodsToChopNetworked.Add(f);
+                    foodsNetworked.Remove(f);
+                    i--;
+                }
+            }
+        }
+        else
+        {
+            while (i > 0)
+            {
+                santaHats[i - 1].AddForce(new Vector2(Random.Range(-1.0f, 1.0f), Random.Range(0.75f, 1.5f) * throwForce), ForceMode2D.Impulse);
+                f = foods[Random.Range(0, foods.Count)];
+                f.AddForce(new Vector2(Random.Range(-1.5f, 1.5f), Random.Range(0.8f, 1.2f) * throwForce), ForceMode2D.Impulse);
+                Debug.Log(f.name);
+                foodsToChop.Add(f);
+                foods.Remove(f);
+                i--;
+            }
         }
     }
 
@@ -148,12 +339,27 @@ public class ChoppingFoodManager : MonoBehaviour
 
     public void RemoveFoodToChop(Rigidbody2D rb)
     {
-        foodsToChop.Remove(rb);
-
-        if (foodsToChop.Count == 0 && !isWaiting)
+        if (runner)
         {
-            isWaiting = true;
-            gameManager.WonMiniGame();
+            foodsToChopNetworked.Remove(rb);
+
+            if (foodsToChopNetworked.Count == 0 && !isWaiting)
+            {
+                wonOrLost = true;
+                isGameWonNetworked = true;
+                isWaiting = true;
+                gameManager.WonMiniGame();
+            }
+        }
+        else
+        {
+            foodsToChop.Remove(rb);
+
+            if (foodsToChop.Count == 0 && !isWaiting)
+            {
+                isWaiting = true;
+                gameManager.WonMiniGame();
+            }
         }
     }
 
@@ -165,7 +371,7 @@ public class ChoppingFoodManager : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (foodsToChop.Contains(collision.GetComponent<Rigidbody2D>()) && !isWaiting)
+        if (foodsToChop.Contains(collision.GetComponent<Rigidbody2D>()) && !isWaiting && !runner)
         {
             Debug.Log("Hit " + collision.transform.gameObject.name);
 
@@ -174,11 +380,25 @@ public class ChoppingFoodManager : MonoBehaviour
         }
     }
 
+    private IEnumerator StartDelayFruitVisibleCheck()
+    {
+        while (delayFruitVisibleCheck > 0)
+        {
+            delayFruitVisibleCheck -= Time.deltaTime;
+            yield return null;
+        }
+
+        if (delayFruitVisibleCheck <= 0)
+        {
+            canCheckFruitVisibility = true;
+        }
+    }
+
     public Vector2 GetMousePosition()
     {
         return mousePos;
     }
-    
+
     public SoundManager getSoundManager()
     {
         return soundManager;
