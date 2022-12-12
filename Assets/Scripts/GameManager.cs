@@ -219,7 +219,7 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
             // Add the scene index to the list of played games
             playedScenes.Add(idx);*/
 
-            idx = 6;
+            idx = 3;
 
             if (_runner)
             {

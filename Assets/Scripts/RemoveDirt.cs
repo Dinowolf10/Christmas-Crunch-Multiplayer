@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Fusion;
 
 /// <summary>
 /// file: RemoveDirt.cs
@@ -12,12 +13,15 @@ public class RemoveDirt : MonoBehaviour
     // References
     private GameManager gameManager;
     private SoundManager soundManager;
+    private NetworkRunner runner;
 
     private void Start()
     {
         gameManager = GameObject.Find("GameManager").GetComponent<GameManager>();
 
         soundManager = GameObject.Find("SoundManager").GetComponent<SoundManager>();
+
+        runner = gameManager.GetRunner();
     }
 
     /// <summary>
@@ -25,6 +29,11 @@ public class RemoveDirt : MonoBehaviour
     /// </summary>
     private void OnMouseEnter()
     {
+        if (runner)
+        {
+            return;
+        }
+
         if (!gameManager.isGamePaused())
         {
             soundManager.PlayVacuumSuckSound();
