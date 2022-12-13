@@ -186,8 +186,14 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
 
         int idx;
 
-        // If all games have been played, reset the played games tracker and increment the round
+        /*// If all games have been played, reset the played games tracker and increment the round
         if (playedScenes.Count == 7)
+        {
+            playedScenes.Clear();
+            roundNumber++;
+        }*/
+
+        if (playedScenes.Count == 3)
         {
             playedScenes.Clear();
             roundNumber++;
@@ -219,7 +225,13 @@ public class GameManager : MonoBehaviour, INetworkRunnerCallbacks
             // Add the scene index to the list of played games
             playedScenes.Add(idx);*/
 
-            idx = 3;
+            while (playedScenes.Contains(idx = UnityEngine.Random.Range(3, 6)))
+            {
+                continue;
+            }
+
+            // Add the scene index to the list of played games
+            playedScenes.Add(idx);
 
             if (_runner)
             {

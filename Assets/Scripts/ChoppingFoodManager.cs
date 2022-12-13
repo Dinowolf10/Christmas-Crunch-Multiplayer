@@ -343,12 +343,15 @@ public class ChoppingFoodManager : NetworkBehaviour
         {
             foodsToChopNetworked.Remove(rb);
 
-            if (foodsToChopNetworked.Count == 0 && !isWaiting)
+            if (runner.IsServer)
             {
-                wonOrLost = true;
-                isGameWonNetworked = true;
-                isWaiting = true;
-                gameManager.WonMiniGame();
+                if (foodsToChopNetworked.Count == 0 && !isWaiting)
+                {
+                    wonOrLost = true;
+                    isGameWonNetworked = true;
+                    isWaiting = true;
+                    gameManager.WonMiniGame();
+                }
             }
         }
         else

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using Fusion;
 
 public class MainMenu : MonoBehaviour
 {
@@ -14,13 +15,24 @@ public class MainMenu : MonoBehaviour
 
     private MouseCursor mouseCursor;
 
+    private NetworkRunner runner;
+
     private void Start()
     {
         gameManager = GameObject.Find("GameManager").GetComponent<GameManager>();
 
         soundManager = GameObject.Find("SoundManager").GetComponent<SoundManager>();
 
-        mouseCursor = GameObject.Find("MouseCursor").GetComponent<MouseCursor>();
+        runner = gameManager.GetRunner();
+
+        if (runner)
+        {
+            //mouseCursor = GameObject.Find("MouseCursorNetworked(Cloned)").GetComponent<MouseCursor>();
+        }
+        else
+        {
+            mouseCursor = GameObject.Find("MouseCursor").GetComponent<MouseCursor>();
+        }
 
         // If the game has already been played, set the slider value to the current volume
         if (gameManager.GetGameResult() != 0 && SceneManager.GetActiveScene().name == "MainMenu")
@@ -46,7 +58,7 @@ public class MainMenu : MonoBehaviour
         gameManager.ResetGameState();
 
         // Resets mouse state to normal
-        mouseCursor.ResetMouseState();
+        //mouseCursor.ResetMouseState();
 
         gameManager.StopAudio();
         gameManager.PlayMainGameplaySound();
@@ -61,7 +73,7 @@ public class MainMenu : MonoBehaviour
     public void LoadMainMenu()
     {
         // Resets mouse state to normal
-        mouseCursor.ResetMouseState();
+        //mouseCursor.ResetMouseState();
 
         // Stop the current audio/music
         gameManager.StopAudio();
